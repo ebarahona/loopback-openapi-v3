@@ -39,6 +39,11 @@ export class OpenApiVersionEnhancer implements OASEnhancer {
 
   modifySpec(spec: OpenApiSpec): OpenApiSpec {
     const opts = {...DEFAULT_CONFIG, ...this.options};
+    debug(
+      'configured target OpenAPI version: %s (transformNullable=%s)',
+      opts.version,
+      opts.transformNullable !== false,
+    );
     const result = transformOpenApiSpec(
       spec as Record<string, unknown>,
       opts,
