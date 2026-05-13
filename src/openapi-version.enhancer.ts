@@ -19,9 +19,9 @@ const debug = debugFactory('loopback:openapi-version');
  * higher versions but have no equivalent in lower versions are stripped.
  * Warnings are logged for each stripped feature.
  *
- * Runs once at boot when the spec is assembled. The transformed
- * spec is deep-cloned and cached by LoopBack, served on subsequent
- * requests without re-processing.
+ * Runs when LoopBack assembles the OpenAPI spec. The transformed
+ * spec is returned to LoopBack for caching/serving according to the
+ * application's OpenAPI configuration.
  *
  * Spec references:
  * - 3.0: https://spec.openapis.org/oas/v3.0.3.html
@@ -45,6 +45,7 @@ export class OpenApiVersionEnhancer implements OASEnhancer {
     );
 
     if (result.warnings.length > 0) {
+      debug('emitted %d OpenAPI compatibility warnings', result.warnings.length);
       for (const w of result.warnings) {
         debug('warning [%s]: %s', w.field, w.message);
       }
