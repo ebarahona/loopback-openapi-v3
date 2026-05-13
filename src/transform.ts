@@ -5,7 +5,7 @@ interface Obj {
   [key: string]: unknown;
 }
 
-const SUPPORTED_MINORS = [0, 1, 2];
+const SUPPORTED_MINORS: readonly number[] = [0, 1, 2];
 
 /**
  * Diagnostic warning emitted when features are stripped during downgrade.
@@ -22,6 +22,21 @@ export interface TransformWarning {
 export interface TransformResult {
   spec: Obj;
   warnings: TransformWarning[];
+}
+
+/**
+ * Emit a warning only once per unique field+message combination.
+ */
+function warnOnce(
+  warnings: TransformWarning[],
+  seen: Set<string>,
+  field: string,
+  message: string,
+): void {
+  const key = `${field}:${message}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  warnings.push({field, message});
 }
 
 /**
@@ -69,7 +84,13 @@ export function transformOpenApiSpec(
   spec: Obj,
   config: OpenApiVersionConfig = DEFAULT_CONFIG,
 ): TransformResult {
-  const sourceVersion = parseVersion(spec.openapi as string);
+  if (typeof spec.openapi !== 'string') {
+    throw new Error(
+      'Invalid OpenAPI spec: missing required string field "openapi".',
+    );
+  }
+
+  const sourceVersion = parseVersion(spec.openapi);
   const targetVersion = parseVersion(config.version);
 
   // Deep clone to prevent mutation of the original spec.
@@ -80,6 +101,7 @@ export function transformOpenApiSpec(
   const sourceMinor = sourceVersion.minor;
   const targetMinor = targetVersion.minor;
   const warnings: TransformWarning[] = [];
+  const warnedKeys = new Set<string>();
 
   if (sourceMinor === targetMinor) {
     return {spec: out, warnings};
@@ -90,15 +112,15 @@ export function transformOpenApiSpec(
     upgradeNullable(out);
   }
 
+  // Strip 3.2 features first (before strip31 removes containers like webhooks)
+  if (targetMinor < 2 && sourceMinor >= 2) {
+    strip32Features(out, targetMinor, warnings, warnedKeys);
+  }
+
   // 3.1+ -> 3.0: downgrade nullable and strip 3.1 features
   if (targetMinor < 1 && sourceMinor >= 1) {
     downgradeNullable(out);
-    strip31Features(out, warnings);
-  }
-
-  // Strip 3.2 features when targeting 3.0 or 3.1
-  if (targetMinor < 2 && sourceMinor >= 2) {
-    strip32Features(out, targetMinor, warnings);
+    strip31Features(out, warnings, warnedKeys);
   }
 
   return {spec: out, warnings};
@@ -184,45 +206,33 @@ function downgradeNullable(spec: Obj): void {
 // 3.1 feature stripping (when targeting 3.0)
 // -------------------------------------------------------------------
 
-function strip31Features(spec: Obj, warnings: TransformWarning[]): void {
-  // jsonSchemaDialect was introduced in 3.1
+function strip31Features(
+  spec: Obj,
+  warnings: TransformWarning[],
+  seen: Set<string>,
+): void {
   if (spec.jsonSchemaDialect !== undefined) {
     delete spec.jsonSchemaDialect;
-    warnings.push({
-      field: 'jsonSchemaDialect',
-      message: 'Removed jsonSchemaDialect because target version is 3.0.x',
-    });
+    warnOnce(warnings, seen, 'jsonSchemaDialect', 'Removed jsonSchemaDialect because target version is 3.0.x');
   }
 
-  // webhooks was introduced in 3.1
   if (spec.webhooks !== undefined) {
     delete spec.webhooks;
-    warnings.push({
-      field: 'webhooks',
-      message: 'Removed webhooks because target version is 3.0.x (webhooks require 3.1+)',
-    });
+    warnOnce(warnings, seen, 'webhooks', 'Removed webhooks because target version is 3.0.x (webhooks require 3.1+)');
   }
 
-  // components.pathItems was introduced in 3.1
   const components = spec.components as Obj | undefined;
   if (components?.pathItems !== undefined) {
     delete components.pathItems;
-    warnings.push({
-      field: 'components.pathItems',
-      message: 'Removed components.pathItems because target version is 3.0.x',
-    });
+    warnOnce(warnings, seen, 'components.pathItems', 'Removed components.pathItems because target version is 3.0.x');
   }
 
-  // License.identifier was introduced in 3.1
   const info = spec.info as Obj | undefined;
   if (info) {
     const license = info.license as Obj | undefined;
     if (license?.identifier !== undefined) {
       delete license.identifier;
-      warnings.push({
-        field: 'info.license.identifier',
-        message: 'Removed license identifier because target version is 3.0.x (use url instead)',
-      });
+      warnOnce(warnings, seen, 'info.license.identifier', 'Removed license identifier because target version is 3.0.x (use url instead)');
     }
   }
 }
@@ -235,14 +245,11 @@ function strip32Features(
   spec: Obj,
   targetMinor: number,
   warnings: TransformWarning[],
+  seen: Set<string>,
 ): void {
-  // OpenAPIObject.$self (3.2 only)
   if (spec.$self !== undefined) {
     delete spec.$self;
-    warnings.push({
-      field: '$self',
-      message: `Removed $self because target version is 3.${targetMinor}.x`,
-    });
+    warnOnce(warnings, seen, '$self', `Removed $self because target version is 3.${targetMinor}.x`);
   }
 
   // jsonSchemaDialect: only strip when targeting 3.0 (3.1 supports it)
@@ -255,10 +262,7 @@ function strip32Features(
         const s = server as Obj;
         if (s.name !== undefined) {
           delete s.name;
-          warnings.push({
-            field: 'servers',
-            message: `Removed server name because target version is 3.${targetMinor}.x`,
-          });
+          warnOnce(warnings, seen, 'servers', `Removed server name because target version is 3.${targetMinor}.x`);
         }
       }
     }
@@ -273,17 +277,11 @@ function strip32Features(
       const pi = item as Obj;
       if (pi.query !== undefined) {
         delete pi.query;
-        warnings.push({
-          field: `paths.${path}.query`,
-          message: `Removed QUERY method because target version is 3.${targetMinor}.x`,
-        });
+        warnOnce(warnings, seen, `paths.${path}.query`, `Removed QUERY method because target version is 3.${targetMinor}.x`);
       }
       if (pi.additionalOperations !== undefined) {
         delete pi.additionalOperations;
-        warnings.push({
-          field: `paths.${path}.additionalOperations`,
-          message: `Removed additionalOperations because target version is 3.${targetMinor}.x`,
-        });
+        warnOnce(warnings, seen, `paths.${path}.additionalOperations`, `Removed additionalOperations because target version is 3.${targetMinor}.x`);
       }
     }
   }
@@ -311,10 +309,7 @@ function strip32Features(
           delete t.parent;
           delete t.kind;
           if (!tagWarned) {
-            warnings.push({
-              field: 'tags',
-              message: `Removed tag fields (summary, parent, kind) because target version is 3.${targetMinor}.x`,
-            });
+            warnOnce(warnings, seen, 'tags', `Removed tag fields (summary, parent, kind) because target version is 3.${targetMinor}.x`);
             tagWarned = true;
           }
         }
@@ -334,10 +329,7 @@ function strip32Features(
         const flows = (scheme as Obj).flows as Obj | undefined;
         if (flows?.device !== undefined) {
           delete flows.device;
-          warnings.push({
-            field: `components.securitySchemes.${name}.flows.device`,
-            message: `Removed OAuth2 device flow because target version is 3.${targetMinor}.x`,
-          });
+          warnOnce(warnings, seen, `components.securitySchemes.${name}.flows.device`, `Removed OAuth2 device flow because target version is 3.${targetMinor}.x`);
         }
       }
     }
@@ -352,10 +344,7 @@ function strip32Features(
         if (e.dataValue !== undefined || e.serializedValue !== undefined) {
           delete e.dataValue;
           delete e.serializedValue;
-          warnings.push({
-            field: `components.examples.${name}`,
-            message: `Removed dataValue/serializedValue because target version is 3.${targetMinor}.x`,
-          });
+          warnOnce(warnings, seen, `components.examples.${name}`, `Removed dataValue/serializedValue because target version is 3.${targetMinor}.x`);
         }
       }
     }
@@ -363,10 +352,7 @@ function strip32Features(
     // 3.2 reusable media types
     if (components.mediaTypes !== undefined) {
       delete components.mediaTypes;
-      warnings.push({
-        field: 'components.mediaTypes',
-        message: `Removed components.mediaTypes because target version is 3.${targetMinor}.x`,
-      });
+      warnOnce(warnings, seen, 'components.mediaTypes', `Removed components.mediaTypes because target version is 3.${targetMinor}.x`);
     }
   }
 
@@ -377,10 +363,7 @@ function strip32Features(
       const xml = schema.xml as Obj;
       if (xml.text !== undefined) {
         delete xml.text;
-        warnings.push({
-          field: 'xml.text',
-          message: `Removed XML text field because target version is 3.${targetMinor}.x`,
-        });
+        warnOnce(warnings, seen, 'xml.text', `Removed XML text field because target version is 3.${targetMinor}.x`);
       }
     }
   });
@@ -393,17 +376,14 @@ function strip32Features(
         if (p && typeof p === 'object' && !('$ref' in p)) {
           if ((p as Obj).in === 'querystring') {
             (p as Obj).in = 'query';
-            warnings.push({
-              field: `${opPath}.parameters`,
-              message: `Converted querystring parameter location to query because target version is 3.${targetMinor}.x`,
-            });
+            warnOnce(warnings, seen, `${opPath}.parameters`, `Converted querystring parameter location to query because target version is 3.${targetMinor}.x`);
           }
         }
       }
     }
 
     // Strip streaming media fields
-    stripMediaFields(op, opPath, warnings, targetMinor);
+    stripMediaFields(op, opPath, warnings, seen, targetMinor);
   });
 }
 
@@ -411,6 +391,7 @@ function stripMediaFields(
   op: Obj,
   opPath: string,
   warnings: TransformWarning[],
+  seen: Set<string>,
   targetMinor: number,
 ): void {
   const fieldsToStrip = ['itemSchema', 'itemEncoding', 'prefixEncoding'];
@@ -423,10 +404,7 @@ function stripMediaFields(
       for (const field of fieldsToStrip) {
         if (m[field] !== undefined) {
           delete m[field];
-          warnings.push({
-            field: `${location}.${mt}.${field}`,
-            message: `Removed ${field} because target version is 3.${targetMinor}.x`,
-          });
+          warnOnce(warnings, seen, `${location}.${mt}.${field}`, `Removed ${field} because target version is 3.${targetMinor}.x`);
         }
       }
     }
