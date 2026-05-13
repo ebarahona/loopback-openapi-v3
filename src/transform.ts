@@ -7,6 +7,10 @@ interface Obj {
 
 const SUPPORTED_MINORS = [0, 1, 2] as const;
 
+function isSupportedMinor(minor: number): minor is typeof SUPPORTED_MINORS[number] {
+  return (SUPPORTED_MINORS as readonly number[]).includes(minor);
+}
+
 /**
  * Diagnostic warning emitted when features are stripped during downgrade.
  */
@@ -59,7 +63,7 @@ export function parseVersion(version: string): {major: number; minor: number; pa
       `Unsupported OpenAPI major version: ${major}. Only version 3.x is supported.`,
     );
   }
-  if (!(SUPPORTED_MINORS as readonly number[]).includes(minor)) {
+  if (!isSupportedMinor(minor)) {
     throw new Error(
       `Unsupported OpenAPI minor version: 3.${minor}. Supported: 3.0.x, 3.1.x, 3.2.x`,
     );

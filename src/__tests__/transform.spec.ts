@@ -790,3 +790,90 @@ describe('XML Object', () => {
     expect(warnings.some(w => w.field === 'xml.text')).toBe(true);
   });
 });
+
+// -------------------------------------------------------------------
+// Transform ordering: 3.2 strip before 3.1 strip
+// -------------------------------------------------------------------
+
+describe('transform ordering', () => {
+  it('strips 3.2 fields from webhooks before webhooks are removed for 3.0', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      webhooks: {
+        onEvent: {
+          query: {responses: {'200': {description: 'OK'}}},
+          post: {responses: {'200': {description: 'OK'}}},
+        },
+      },
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const queryWarning = warnings.find(w => w.field.includes('webhooks.onEvent.query'));
+    const webhookWarning = warnings.find(w => w.field === 'webhooks');
+    expect(queryWarning).toBeDefined();
+    expect(webhookWarning).toBeDefined();
+  });
+});
+
+// -------------------------------------------------------------------
+// Warning deduplication
+// -------------------------------------------------------------------
+
+describe('warning deduplication', () => {
+  it('dedupes repeated warnings', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {
+        '/a': {
+          get: {
+            responses: {
+              '200': {
+                description: 'OK',
+                content: {
+                  'text/event-stream': {
+                    schema: {type: 'string'},
+                    itemSchema: {type: 'object'},
+                  },
+                },
+              },
+            },
+          },
+        },
+        '/b': {
+          get: {
+            responses: {
+              '200': {
+                description: 'OK',
+                content: {
+                  'text/event-stream': {
+                    schema: {type: 'string'},
+                    itemSchema: {type: 'object'},
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      servers: [
+        {url: 'https://a.example.com', name: 'a'},
+        {url: 'https://b.example.com', name: 'b'},
+      ],
+      components: {
+        schemas: {
+          A: {type: 'object', xml: {text: true}},
+          B: {type: 'object', xml: {text: true}},
+        },
+      },
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const serverWarnings = warnings.filter(w => w.field === 'servers');
+    const xmlWarnings = warnings.filter(w => w.field === 'xml.text');
+    expect(serverWarnings.length).toBe(1);
+    expect(xmlWarnings.length).toBe(1);
+  });
+});
