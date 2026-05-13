@@ -27,7 +27,7 @@
     "spec",
     "component"
   ],
-  "author": "Ed Barahona",
+  "author": "Ed Barahona (https://github.com/ebarahona)",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -64,5 +64,9 @@
   ],
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/ebarahona/loopback-openapi-v3/issues"
+  },
+  "homepage": "https://github.com/ebarahona/loopback-openapi-v3#readme"
 }
