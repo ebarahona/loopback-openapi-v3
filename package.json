@@ -1,0 +1,66 @@
+{
+  "name": "@ebarahona/loopback-openapi-v3",
+  "version": "0.1.0",
+  "description": "LoopBack 4 component for OpenAPI 3.1 and 3.2 spec generation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "keywords": [
+    "loopback",
+    "loopback4",
+    "openapi",
+    "openapi3",
+    "openapi31",
+    "openapi32",
+    "swagger",
+    "spec",
+    "component"
+  ],
+  "author": "Ed Barahona",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ebarahona/loopback-openapi-v3.git"
+  },
+  "dependencies": {
+    "openapi3-ts": "github:ebarahona/openapi3-ts#feature/oas32"
+  },
+  "peerDependencies": {
+    "@loopback/core": ">=7.0.0",
+    "@loopback/openapi-v3": ">=11.0.0",
+    "@loopback/rest": ">=15.0.0"
+  },
+  "devDependencies": {
+    "@loopback/core": "^7.0.12",
+    "@loopback/openapi-v3": "^11.0.13",
+    "@loopback/rest": "^15.0.13",
+    "@loopback/testlab": "^8.0.12",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0",
+    "rimraf": "^5.0.0",
+    "typescript": "~5.2.2",
+    "vitest": "^2.0.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
