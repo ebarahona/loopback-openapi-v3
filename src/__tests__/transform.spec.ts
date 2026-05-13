@@ -74,7 +74,7 @@ describe('nullable edge cases', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const mixed = (result.components as Record<string, unknown>)?.schemas as Record<string, unknown>;
     const schema = mixed?.Mixed as Record<string, unknown>;
     expect(schema).not.toHaveProperty('nullable');
@@ -100,7 +100,7 @@ describe('nullable edge cases', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const schema = ((result.components as Record<string, unknown>)?.schemas as Record<string, unknown>)?.Mixed as Record<string, unknown>;
     expect(schema.anyOf).toEqual([{type: 'string'}, {type: 'null'}]);
   });
@@ -120,7 +120,7 @@ describe('nullable edge cases', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const schema = ((result.components as Record<string, unknown>)?.schemas as Record<string, unknown>)?.Mixed as Record<string, unknown>;
     expect(schema).not.toHaveProperty('allOf');
     expect(schema.anyOf).toEqual([
@@ -141,7 +141,7 @@ describe('nullable edge cases', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const schema = ((result.components as Record<string, unknown>)?.schemas as Record<string, unknown>)?.Empty as Record<string, unknown>;
     expect(schema.type).toBe('null');
     expect(schema).not.toHaveProperty('nullable');
@@ -161,7 +161,7 @@ describe('nullable edge cases', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
     const schema = ((result.components as Record<string, unknown>)?.schemas as Record<string, unknown>)?.Mixed as Record<string, unknown>;
     expect(schema.nullable).toBe(true);
     expect(schema.oneOf).toEqual([{type: 'string'}, {type: 'integer'}]);
@@ -189,7 +189,7 @@ describe('component-level schema traversal', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const params = (result.components as Record<string, unknown>)?.parameters as Record<string, unknown>;
     const param = params?.FilterParam as Record<string, unknown>;
     const schema = param?.schema as Record<string, unknown>;
@@ -219,7 +219,7 @@ describe('component-level schema traversal', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const bodies = (result.components as Record<string, unknown>)?.requestBodies as Record<string, unknown>;
     const body = bodies?.CreateItem as Record<string, unknown>;
     const content = body?.content as Record<string, unknown>;
@@ -249,7 +249,7 @@ describe('component-level schema traversal', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const responses = (result.components as Record<string, unknown>)?.responses as Record<string, unknown>;
     const resp = responses?.ItemResponse as Record<string, unknown>;
     const content = resp?.content as Record<string, unknown>;
@@ -272,7 +272,7 @@ describe('component-level schema traversal', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const headers = (result.components as Record<string, unknown>)?.headers as Record<string, unknown>;
     const header = headers?.XRateLimit as Record<string, unknown>;
     const schema = header?.schema as Record<string, unknown>;
@@ -306,7 +306,7 @@ describe('webhooks', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const webhooks = result.webhooks as Record<string, unknown>;
     const hook = webhooks?.newItem as Record<string, unknown>;
     const post = hook?.post as Record<string, unknown>;
@@ -317,7 +317,7 @@ describe('webhooks', () => {
     expect(schema?.type).toEqual(['string', 'null']);
   });
 
-  it('strips 3.2 features from webhooks', () => {
+  it('strips 3.2 features from webhooks when targeting 3.1', () => {
     const spec = {
       openapi: '3.2.0',
       info: {title: 'T', version: '1'},
@@ -331,10 +331,29 @@ describe('webhooks', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const webhooks = result.webhooks as Record<string, unknown>;
     const hook = webhooks?.newItem as Record<string, unknown>;
     expect(hook).not.toHaveProperty('query');
+  });
+
+  it('strips webhooks entirely when targeting 3.0', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      webhooks: {
+        newItem: {
+          post: {
+            responses: {'200': {description: 'OK'}},
+          },
+        },
+      },
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    expect(result).not.toHaveProperty('webhooks');
+    expect(warnings.some(w => w.field === 'webhooks')).toBe(true);
   });
 });
 
@@ -373,7 +392,7 @@ describe('callbacks', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const paths = result.paths as Record<string, unknown>;
     const sub = paths?.['/subscribe'] as Record<string, unknown>;
     const post = sub?.post as Record<string, unknown>;
@@ -410,7 +429,7 @@ describe('path-level parameters', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const paths = result.paths as Record<string, unknown>;
     const pathItem = paths?.['/items/{id}'] as Record<string, unknown>;
     const params = pathItem?.parameters as Record<string, unknown>[];
@@ -469,7 +488,7 @@ describe('3.2 additional fields', () => {
       jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
     expect(result).not.toHaveProperty('jsonSchemaDialect');
   });
 
@@ -487,8 +506,148 @@ describe('3.2 additional fields', () => {
       },
     };
 
-    const result = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
     const components = result.components as Record<string, unknown>;
     expect(components).not.toHaveProperty('mediaTypes');
+  });
+});
+
+// -------------------------------------------------------------------
+// Warnings diagnostics
+// -------------------------------------------------------------------
+
+describe('warnings', () => {
+  it('emits warnings when stripping 3.2 features', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      $self: 'https://example.com/api',
+      components: {
+        mediaTypes: {JsonResponse: {schema: {type: 'object'}}},
+      },
+      tags: [{name: 'test', summary: 'Test tag', parent: 'root', kind: 'nav'}],
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some(w => w.field === '$self')).toBe(true);
+    expect(warnings.some(w => w.field === 'components.mediaTypes')).toBe(true);
+    expect(warnings.some(w => w.field === 'tags')).toBe(true);
+  });
+
+  it('emits no warnings for same-version transform', () => {
+    const spec = {
+      openapi: '3.0.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    expect(warnings).toEqual([]);
+  });
+
+  it('emits no warnings for upgrades', () => {
+    const spec = {
+      openapi: '3.0.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      components: {
+        schemas: {
+          Item: {type: 'string', nullable: true},
+        },
+      },
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    expect(warnings).toEqual([]);
+  });
+
+  it('emits warnings for jsonSchemaDialect when targeting 3.0', () => {
+    const spec = {
+      openapi: '3.1.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
+    };
+
+    const {warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    expect(warnings.some(w => w.field === 'jsonSchemaDialect')).toBe(true);
+  });
+
+  it('preserves jsonSchemaDialect when targeting 3.1', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
+    };
+
+    const {spec: result} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    expect(result.jsonSchemaDialect).toBe('https://json-schema.org/draft/2020-12/schema');
+  });
+});
+
+// -------------------------------------------------------------------
+// Version validation
+// -------------------------------------------------------------------
+
+describe('version validation', () => {
+  it('rejects unsupported minor version 3.99.0', () => {
+    const spec = {openapi: '3.0.0', info: {title: 'T', version: '1'}, paths: {}};
+    expect(() => transformOpenApiSpec(spec, {version: '3.99.0' as '3.0.0'})).toThrow(
+      'Unsupported OpenAPI minor version',
+    );
+  });
+
+  it('rejects invalid source version', () => {
+    const spec = {openapi: 'banana', info: {title: 'T', version: '1'}, paths: {}};
+    expect(() => transformOpenApiSpec(spec, {version: '3.1.0'})).toThrow(
+      'Invalid OpenAPI version',
+    );
+  });
+});
+
+// -------------------------------------------------------------------
+// itemEncoding, prefixEncoding (3.2 media fields)
+// -------------------------------------------------------------------
+
+describe('3.2 media fields', () => {
+  it('strips itemEncoding and prefixEncoding when downgrading', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {
+        '/stream': {
+          get: {
+            responses: {
+              '200': {
+                description: 'OK',
+                content: {
+                  'text/event-stream': {
+                    schema: {type: 'string'},
+                    itemSchema: {type: 'object'},
+                    itemEncoding: {contentType: 'application/json'},
+                    prefixEncoding: {contentType: 'text/plain'},
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const getOp = (result.paths as Record<string, unknown>)?.['/stream'] as Record<string, unknown>;
+    const get = getOp?.get as Record<string, unknown>;
+    const resp = (get?.responses as Record<string, unknown>)?.['200'] as Record<string, unknown>;
+    const content = resp?.content as Record<string, unknown>;
+    const sse = content?.['text/event-stream'] as Record<string, unknown>;
+    expect(sse).not.toHaveProperty('itemSchema');
+    expect(sse).not.toHaveProperty('itemEncoding');
+    expect(sse).not.toHaveProperty('prefixEncoding');
+    expect(sse).toHaveProperty('schema');
+    expect(warnings.some(w => w.message.includes('itemSchema'))).toBe(true);
   });
 });

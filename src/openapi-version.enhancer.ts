@@ -3,9 +3,12 @@ import {
   OASEnhancer,
   OpenApiSpec,
 } from '@loopback/openapi-v3';
+import debugFactory from 'debug';
 import {OpenApiVersionBindings} from './keys';
 import {transformOpenApiSpec} from './transform';
 import {DEFAULT_CONFIG, OpenApiVersionConfig} from './types';
+
+const debug = debugFactory('loopback:openapi-version');
 
 /**
  * OAS Enhancer that transforms the generated OpenAPI spec between
@@ -14,6 +17,7 @@ import {DEFAULT_CONFIG, OpenApiVersionConfig} from './types';
  * Handles both upgrades (3.0 -> 3.1/3.2) and compatibility downgrades
  * (3.2 -> 3.0/3.1). Downgrades are lossy: features that exist in
  * higher versions but have no equivalent in lower versions are stripped.
+ * Warnings are logged for each stripped feature.
  *
  * Runs once at boot when the spec is assembled. The transformed
  * spec is deep-cloned and cached by LoopBack, served on subsequent
@@ -35,9 +39,17 @@ export class OpenApiVersionEnhancer implements OASEnhancer {
 
   modifySpec(spec: OpenApiSpec): OpenApiSpec {
     const opts = {...DEFAULT_CONFIG, ...this.options};
-    return transformOpenApiSpec(
+    const result = transformOpenApiSpec(
       spec as Record<string, unknown>,
       opts,
-    ) as OpenApiSpec;
+    );
+
+    if (result.warnings.length > 0) {
+      for (const w of result.warnings) {
+        debug('warning [%s]: %s', w.field, w.message);
+      }
+    }
+
+    return result.spec as OpenApiSpec;
   }
 }

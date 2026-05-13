@@ -1,8 +1,27 @@
-import {OpenApiVersion, OpenApiVersionConfig, DEFAULT_CONFIG} from './types';
+import {OpenApiVersionConfig, DEFAULT_CONFIG} from './types';
 
 // Internal type for untyped spec traversal.
 interface Obj {
   [key: string]: unknown;
+}
+
+const SUPPORTED_MINORS = [0, 1, 2];
+
+/**
+ * Diagnostic warning emitted when features are stripped during downgrade.
+ */
+export interface TransformWarning {
+  field: string;
+  message: string;
+}
+
+/**
+ * Result of a spec transformation, including the transformed spec
+ * and any diagnostic warnings about lossy operations.
+ */
+export interface TransformResult {
+  spec: Obj;
+  warnings: TransformWarning[];
 }
 
 /**
@@ -16,10 +35,18 @@ export function parseVersion(version: string): {major: number; minor: number; pa
       `Invalid OpenAPI version: "${version}". Expected format: "3.x.x"`,
     );
   }
-  const [, major, minor, patch] = match.map(Number);
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+
   if (major !== 3) {
     throw new Error(
       `Unsupported OpenAPI major version: ${major}. Only version 3.x is supported.`,
+    );
+  }
+  if (!SUPPORTED_MINORS.includes(minor)) {
+    throw new Error(
+      `Unsupported OpenAPI minor version: 3.${minor}. Supported: 3.0.x, 3.1.x, 3.2.x`,
     );
   }
   return {major, minor, patch};
@@ -33,25 +60,29 @@ export function parseVersion(version: string): {major: number; minor: number; pa
  * (3.2 -> 3.0/3.1).
  *
  * Note: downgrades are lossy. Features that exist in higher versions
- * but have no equivalent in lower versions are stripped. This is a
- * compatibility downgrade, not exact semantic preservation.
+ * but have no equivalent in lower versions are stripped. Warnings are
+ * emitted for each stripped feature.
+ *
+ * Requires Node.js 18+ for structuredClone.
  */
 export function transformOpenApiSpec(
   spec: Obj,
   config: OpenApiVersionConfig = DEFAULT_CONFIG,
-): Obj {
+): TransformResult {
   const sourceVersion = parseVersion(spec.openapi as string);
   const targetVersion = parseVersion(config.version);
 
-  // Deep clone to prevent mutation of the original spec
+  // Deep clone to prevent mutation of the original spec.
+  // Requires Node.js 18+. The package.json engines field enforces this.
   const out = structuredClone(spec);
   out.openapi = config.version;
 
   const sourceMinor = sourceVersion.minor;
   const targetMinor = targetVersion.minor;
+  const warnings: TransformWarning[] = [];
 
   if (sourceMinor === targetMinor) {
-    return out;
+    return {spec: out, warnings};
   }
 
   // 3.0 -> 3.1+: upgrade nullable
@@ -59,17 +90,18 @@ export function transformOpenApiSpec(
     upgradeNullable(out);
   }
 
-  // 3.1+ -> 3.0: downgrade nullable
+  // 3.1+ -> 3.0: downgrade nullable and strip 3.1 features
   if (targetMinor < 1 && sourceMinor >= 1) {
     downgradeNullable(out);
+    strip31Features(out, warnings);
   }
 
   // Strip 3.2 features when targeting 3.0 or 3.1
   if (targetMinor < 2 && sourceMinor >= 2) {
-    strip32Features(out);
+    strip32Features(out, targetMinor, warnings);
   }
 
-  return out;
+  return {spec: out, warnings};
 }
 
 // -------------------------------------------------------------------
@@ -79,12 +111,12 @@ export function transformOpenApiSpec(
 /**
  * 3.0 -> 3.1+: nullable upgrade
  *
- * Handles:
+ * Handles all nullable patterns:
  * - { type: 'string', nullable: true } -> { type: ['string', 'null'] }
  * - { nullable: true, oneOf: [...] } -> { oneOf: [..., { type: 'null' }] }
  * - { nullable: true, anyOf: [...] } -> { anyOf: [..., { type: 'null' }] }
  * - { nullable: true, allOf: [...] } -> { anyOf: [{ allOf: [...] }, { type: 'null' }] }
- * - { nullable: true } (no type) -> { type: 'null' } or adds null to composition
+ * - { nullable: true } (no type/composition) -> { type: 'null' }
  */
 function upgradeNullable(spec: Obj): void {
   walkAllSchemas(spec, (s: Obj) => {
@@ -93,21 +125,16 @@ function upgradeNullable(spec: Obj): void {
     delete s.nullable;
 
     if (typeof s.type === 'string') {
-      // Simple case: { type: 'string', nullable: true }
       s.type = [s.type, 'null'];
     } else if (Array.isArray(s.oneOf)) {
-      // { nullable: true, oneOf: [...] } -> append { type: 'null' }
       (s.oneOf as Obj[]).push({type: 'null'});
     } else if (Array.isArray(s.anyOf)) {
-      // { nullable: true, anyOf: [...] } -> append { type: 'null' }
       (s.anyOf as Obj[]).push({type: 'null'});
     } else if (Array.isArray(s.allOf)) {
-      // { nullable: true, allOf: [...] } -> wrap in anyOf
       const allOf = s.allOf;
       delete s.allOf;
       s.anyOf = [{allOf}, {type: 'null'}];
     } else {
-      // No type or composition: just set type to null
       s.type = 'null';
     }
   });
@@ -120,6 +147,9 @@ function upgradeNullable(spec: Obj): void {
  * - { type: ['string', 'null'] } -> { type: 'string', nullable: true }
  * - { oneOf: [..., { type: 'null' }] } -> { nullable: true, oneOf: [...] }
  * - { anyOf: [..., { type: 'null' }] } -> { nullable: true, anyOf: [...] }
+ *
+ * Does NOT unwrap single-element composition arrays to avoid
+ * metadata collision (description, title, default, etc.).
  */
 function downgradeNullable(spec: Obj): void {
   walkAllSchemas(spec, (s: Obj) => {
@@ -144,25 +174,56 @@ function downgradeNullable(spec: Obj): void {
       if (nullIdx !== -1) {
         arr.splice(nullIdx, 1);
         s.nullable = true;
-        // Unwrap single-element arrays
-        if (arr.length === 1) {
-          const remaining = arr[0];
-          delete s[key];
-          Object.assign(s, remaining);
-        }
+        // Do NOT unwrap single-element arrays to avoid metadata collision
       }
     }
   });
 }
 
 // -------------------------------------------------------------------
-// 3.2 feature stripping
+// 3.1 feature stripping (when targeting 3.0)
 // -------------------------------------------------------------------
 
-function strip32Features(spec: Obj): void {
-  // Root-level 3.2 fields
-  delete spec.$self;
-  delete spec.jsonSchemaDialect;
+function strip31Features(spec: Obj, warnings: TransformWarning[]): void {
+  // jsonSchemaDialect was introduced in 3.1
+  if (spec.jsonSchemaDialect !== undefined) {
+    delete spec.jsonSchemaDialect;
+    warnings.push({
+      field: 'jsonSchemaDialect',
+      message: 'Removed jsonSchemaDialect because target version is 3.0.x',
+    });
+  }
+
+  // webhooks was introduced in 3.1
+  if (spec.webhooks !== undefined) {
+    delete spec.webhooks;
+    warnings.push({
+      field: 'webhooks',
+      message: 'Removed webhooks because target version is 3.0.x (webhooks require 3.1+)',
+    });
+  }
+}
+
+// -------------------------------------------------------------------
+// 3.2 feature stripping (when targeting 3.0 or 3.1)
+// -------------------------------------------------------------------
+
+function strip32Features(
+  spec: Obj,
+  targetMinor: number,
+  warnings: TransformWarning[],
+): void {
+  // OpenAPIObject.$self (3.2 only)
+  if (spec.$self !== undefined) {
+    delete spec.$self;
+    warnings.push({
+      field: '$self',
+      message: `Removed $self because target version is 3.${targetMinor}.x`,
+    });
+  }
+
+  // jsonSchemaDialect: only strip when targeting 3.0 (3.1 supports it)
+  // Already handled by strip31Features if targeting 3.0
 
   // PathItem: query method, additionalOperations
   const paths = spec.paths as Obj | undefined;
@@ -171,12 +232,24 @@ function strip32Features(spec: Obj): void {
       const item = paths[path];
       if (!item || typeof item !== 'object') continue;
       const pi = item as Obj;
-      delete pi.query;
-      delete pi.additionalOperations;
+      if (pi.query !== undefined) {
+        delete pi.query;
+        warnings.push({
+          field: `paths.${path}.query`,
+          message: `Removed QUERY method because target version is 3.${targetMinor}.x`,
+        });
+      }
+      if (pi.additionalOperations !== undefined) {
+        delete pi.additionalOperations;
+        warnings.push({
+          field: `paths.${path}.additionalOperations`,
+          message: `Removed additionalOperations because target version is 3.${targetMinor}.x`,
+        });
+      }
     }
   }
 
-  // Webhooks: same treatment as paths
+  // Webhooks: same treatment
   const webhooks = spec.webhooks as Obj | undefined;
   if (webhooks) {
     for (const name in webhooks) {
@@ -190,12 +263,22 @@ function strip32Features(spec: Obj): void {
 
   // Tags: summary, parent, kind
   if (Array.isArray(spec.tags)) {
+    let tagWarned = false;
     for (const tag of spec.tags) {
       if (tag && typeof tag === 'object') {
         const t = tag as Obj;
-        delete t.summary;
-        delete t.parent;
-        delete t.kind;
+        if (t.summary !== undefined || t.parent !== undefined || t.kind !== undefined) {
+          delete t.summary;
+          delete t.parent;
+          delete t.kind;
+          if (!tagWarned) {
+            warnings.push({
+              field: 'tags',
+              message: `Removed tag fields (summary, parent, kind) because target version is 3.${targetMinor}.x`,
+            });
+            tagWarned = true;
+          }
+        }
       }
     }
   }
@@ -210,7 +293,13 @@ function strip32Features(spec: Obj): void {
         const scheme = schemes[name];
         if (!scheme || typeof scheme !== 'object' || '$ref' in scheme) continue;
         const flows = (scheme as Obj).flows as Obj | undefined;
-        if (flows) delete flows.device;
+        if (flows?.device !== undefined) {
+          delete flows.device;
+          warnings.push({
+            field: `components.securitySchemes.${name}.flows.device`,
+            message: `Removed OAuth2 device flow because target version is 3.${targetMinor}.x`,
+          });
+        }
       }
     }
 
@@ -221,42 +310,79 @@ function strip32Features(spec: Obj): void {
         const ex = examples[name];
         if (!ex || typeof ex !== 'object' || '$ref' in ex) continue;
         const e = ex as Obj;
-        delete e.dataValue;
-        delete e.serializedValue;
-      }
-    }
-
-    // 3.2 reusable media types
-    delete components.mediaTypes;
-  }
-
-  // Per-operation: querystring param location, itemSchema
-  forEachOperation(spec, (op: Obj) => {
-    // querystring -> query
-    if (Array.isArray(op.parameters)) {
-      for (const p of op.parameters) {
-        if (p && typeof p === 'object' && !('$ref' in p)) {
-          if ((p as Obj).in === 'querystring') (p as Obj).in = 'query';
+        if (e.dataValue !== undefined || e.serializedValue !== undefined) {
+          delete e.dataValue;
+          delete e.serializedValue;
+          warnings.push({
+            field: `components.examples.${name}`,
+            message: `Removed dataValue/serializedValue because target version is 3.${targetMinor}.x`,
+          });
         }
       }
     }
 
-    // Strip itemSchema from all media types
-    stripItemSchema(op);
+    // 3.2 reusable media types
+    if (components.mediaTypes !== undefined) {
+      delete components.mediaTypes;
+      warnings.push({
+        field: 'components.mediaTypes',
+        message: `Removed components.mediaTypes because target version is 3.${targetMinor}.x`,
+      });
+    }
+  }
+
+  // Per-operation: querystring param location, itemSchema, itemEncoding, prefixEncoding
+  forEachOperation(spec, (op: Obj, opPath: string) => {
+    // querystring -> query
+    if (Array.isArray(op.parameters)) {
+      for (const p of op.parameters) {
+        if (p && typeof p === 'object' && !('$ref' in p)) {
+          if ((p as Obj).in === 'querystring') {
+            (p as Obj).in = 'query';
+            warnings.push({
+              field: `${opPath}.parameters`,
+              message: `Converted querystring parameter location to query because target version is 3.${targetMinor}.x`,
+            });
+          }
+        }
+      }
+    }
+
+    // Strip streaming media fields
+    stripMediaFields(op, opPath, warnings, targetMinor);
   });
 }
 
-function stripItemSchema(op: Obj): void {
+function stripMediaFields(
+  op: Obj,
+  opPath: string,
+  warnings: TransformWarning[],
+  targetMinor: number,
+): void {
+  const fieldsToStrip = ['itemSchema', 'itemEncoding', 'prefixEncoding'];
+
+  function stripFromContent(content: Obj, location: string): void {
+    for (const mt in content) {
+      const media = content[mt];
+      if (!media || typeof media !== 'object') continue;
+      const m = media as Obj;
+      for (const field of fieldsToStrip) {
+        if (m[field] !== undefined) {
+          delete m[field];
+          warnings.push({
+            field: `${location}.${mt}.${field}`,
+            message: `Removed ${field} because target version is 3.${targetMinor}.x`,
+          });
+        }
+      }
+    }
+  }
+
   // Request body
   const reqBody = op.requestBody;
   if (reqBody && typeof reqBody === 'object' && !('$ref' in reqBody)) {
     const content = (reqBody as Obj).content as Obj | undefined;
-    if (content) {
-      for (const mt in content) {
-        const media = content[mt];
-        if (media && typeof media === 'object') delete (media as Obj).itemSchema;
-      }
-    }
+    if (content) stripFromContent(content, `${opPath}.requestBody.content`);
   }
 
   // Responses
@@ -266,11 +392,7 @@ function stripItemSchema(op: Obj): void {
       const resp = responses[code];
       if (!resp || typeof resp !== 'object' || '$ref' in resp) continue;
       const content = (resp as Obj).content as Obj | undefined;
-      if (!content) continue;
-      for (const mt in content) {
-        const media = content[mt];
-        if (media && typeof media === 'object') delete (media as Obj).itemSchema;
-      }
+      if (content) stripFromContent(content, `${opPath}.responses.${code}.content`);
     }
   }
 }
@@ -349,7 +471,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       if (media.schema && typeof media.schema === 'object' && !('$ref' in media.schema)) {
         visit(media.schema as Obj);
       }
-      // 3.2 itemSchema
       if (media.itemSchema && typeof media.itemSchema === 'object' && !('$ref' in media.itemSchema)) {
         visit(media.itemSchema as Obj);
       }
@@ -363,7 +484,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       if (param.schema && typeof param.schema === 'object' && !('$ref' in param.schema)) {
         visit(param.schema as Obj);
       }
-      // Parameter-level content
       if (param.content && typeof param.content === 'object') {
         visitMediaContent(param.content as Obj);
       }
@@ -373,7 +493,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
   // Component-level schemas
   const components = spec.components as Obj | undefined;
   if (components) {
-    // components.schemas
     const schemas = components.schemas as Obj | undefined;
     if (schemas) {
       for (const name in schemas) {
@@ -382,7 +501,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       }
     }
 
-    // components.parameters
     const params = components.parameters as Obj | undefined;
     if (params) {
       for (const name in params) {
@@ -396,7 +514,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       }
     }
 
-    // components.requestBodies
     const reqBodies = components.requestBodies as Obj | undefined;
     if (reqBodies) {
       for (const name in reqBodies) {
@@ -407,7 +524,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       }
     }
 
-    // components.responses
     const responses = components.responses as Obj | undefined;
     if (responses) {
       for (const name in responses) {
@@ -418,7 +534,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       }
     }
 
-    // components.headers
     const headers = components.headers as Obj | undefined;
     if (headers) {
       for (const name in headers) {
@@ -439,31 +554,26 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
       if (!item || typeof item !== 'object') continue;
       const pi = item as Obj;
 
-      // Path-level parameters
       if (Array.isArray(pi.parameters)) {
         visitParams(pi.parameters);
       }
 
-      // Operations
       const verbs = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'];
       for (const verb of verbs) {
         const op = pi[verb];
         if (!op || typeof op !== 'object') continue;
         const operation = op as Obj;
 
-        // Operation parameters
         if (Array.isArray(operation.parameters)) {
           visitParams(operation.parameters);
         }
 
-        // Request body
         const reqBody = operation.requestBody;
         if (reqBody && typeof reqBody === 'object' && !('$ref' in reqBody)) {
           const content = (reqBody as Obj).content as Obj | undefined;
           if (content) visitMediaContent(content);
         }
 
-        // Responses
         const responses = operation.responses as Obj | undefined;
         if (responses) {
           for (const code in responses) {
@@ -474,7 +584,6 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
           }
         }
 
-        // Callbacks (contain path items)
         const callbacks = operation.callbacks as Obj | undefined;
         if (callbacks) {
           for (const cbName in callbacks) {
@@ -488,12 +597,10 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
     }
   }
 
-  // paths
   if (spec.paths && typeof spec.paths === 'object') {
     visitPaths(spec.paths as Obj);
   }
 
-  // webhooks (same structure as paths)
   if (spec.webhooks && typeof spec.webhooks === 'object') {
     visitPaths(spec.webhooks as Obj);
   }
@@ -501,11 +608,15 @@ function walkAllSchemas(spec: Obj, visitor: (schema: Obj) => void): void {
 
 /**
  * Iterate every operation across paths, webhooks, and callbacks.
+ * Passes the operation path string for diagnostic context.
  */
-function forEachOperation(spec: Obj, visitor: (op: Obj) => void): void {
+function forEachOperation(
+  spec: Obj,
+  visitor: (op: Obj, path: string) => void,
+): void {
   const verbs = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace', 'query'];
 
-  function visitPathItems(pathsObj: Obj): void {
+  function visitPathItems(pathsObj: Obj, prefix: string): void {
     for (const path in pathsObj) {
       const item = pathsObj[path];
       if (!item || typeof item !== 'object') continue;
@@ -514,15 +625,15 @@ function forEachOperation(spec: Obj, visitor: (op: Obj) => void): void {
       for (const verb of verbs) {
         const op = pi[verb];
         if (!op || typeof op !== 'object') continue;
-        visitor(op as Obj);
+        const opPath = `${prefix}.${path}.${verb}`;
+        visitor(op as Obj, opPath);
 
-        // Recurse into callbacks
         const callbacks = (op as Obj).callbacks as Obj | undefined;
         if (callbacks) {
           for (const cbName in callbacks) {
             const cb = callbacks[cbName];
             if (cb && typeof cb === 'object' && !('$ref' in cb)) {
-              visitPathItems(cb as Obj);
+              visitPathItems(cb as Obj, `${opPath}.callbacks.${cbName}`);
             }
           }
         }
@@ -531,9 +642,9 @@ function forEachOperation(spec: Obj, visitor: (op: Obj) => void): void {
   }
 
   if (spec.paths && typeof spec.paths === 'object') {
-    visitPathItems(spec.paths as Obj);
+    visitPathItems(spec.paths as Obj, 'paths');
   }
   if (spec.webhooks && typeof spec.webhooks === 'object') {
-    visitPathItems(spec.webhooks as Obj);
+    visitPathItems(spec.webhooks as Obj, 'webhooks');
   }
 }
