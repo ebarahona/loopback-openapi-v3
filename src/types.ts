@@ -2,7 +2,7 @@ export type OpenApiVersion = '3.0.0' | '3.1.0' | '3.2.0';
 
 export interface OpenApiVersionConfig {
   /**
-   * Target OpenAPI specification version.
+   * Target OpenAPI Specification version.
    * Defaults to '3.0.0' for backward compatibility.
    */
   version: OpenApiVersion;
