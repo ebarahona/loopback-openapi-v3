@@ -651,3 +651,102 @@ describe('3.2 media fields', () => {
     expect(warnings.some(w => w.message.includes('itemSchema'))).toBe(true);
   });
 });
+
+// -------------------------------------------------------------------
+// Server.name (3.2)
+// -------------------------------------------------------------------
+
+describe('Server.name', () => {
+  it('strips server name when downgrading from 3.2', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      servers: [{url: 'https://api.example.com', name: 'production'}],
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const servers = result.servers as Record<string, unknown>[];
+    expect(servers[0]).not.toHaveProperty('name');
+    expect(servers[0].url).toBe('https://api.example.com');
+    expect(warnings.some(w => w.field === 'servers')).toBe(true);
+  });
+});
+
+// -------------------------------------------------------------------
+// License.identifier (3.1+)
+// -------------------------------------------------------------------
+
+describe('License.identifier', () => {
+  it('strips license identifier when targeting 3.0', () => {
+    const spec = {
+      openapi: '3.1.0',
+      info: {title: 'T', version: '1', license: {name: 'MIT', identifier: 'MIT'}},
+      paths: {},
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const info = result.info as Record<string, unknown>;
+    const license = info?.license as Record<string, unknown>;
+    expect(license).not.toHaveProperty('identifier');
+    expect(license?.name).toBe('MIT');
+  });
+
+  it('preserves license identifier when targeting 3.1', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1', license: {name: 'MIT', identifier: 'MIT'}},
+      paths: {},
+    };
+
+    const {spec: result} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const info = result.info as Record<string, unknown>;
+    const license = info?.license as Record<string, unknown>;
+    expect(license?.identifier).toBe('MIT');
+  });
+});
+
+// -------------------------------------------------------------------
+// components.pathItems (3.1+)
+// -------------------------------------------------------------------
+
+describe('components.pathItems', () => {
+  it('strips pathItems when targeting 3.0', () => {
+    const spec = {
+      openapi: '3.1.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      components: {
+        pathItems: {
+          CommonItem: {
+            get: {responses: {'200': {description: 'OK'}}},
+          },
+        },
+      },
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.0.0'});
+    const components = result.components as Record<string, unknown>;
+    expect(components).not.toHaveProperty('pathItems');
+    expect(warnings.some(w => w.field === 'components.pathItems')).toBe(true);
+  });
+
+  it('preserves pathItems when targeting 3.1', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      components: {
+        pathItems: {
+          CommonItem: {
+            get: {responses: {'200': {description: 'OK'}}},
+          },
+        },
+      },
+    };
+
+    const {spec: result} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const components = result.components as Record<string, unknown>;
+    expect(components).toHaveProperty('pathItems');
+  });
+});

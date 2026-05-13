@@ -202,6 +202,29 @@ function strip31Features(spec: Obj, warnings: TransformWarning[]): void {
       message: 'Removed webhooks because target version is 3.0.x (webhooks require 3.1+)',
     });
   }
+
+  // components.pathItems was introduced in 3.1
+  const components = spec.components as Obj | undefined;
+  if (components?.pathItems !== undefined) {
+    delete components.pathItems;
+    warnings.push({
+      field: 'components.pathItems',
+      message: 'Removed components.pathItems because target version is 3.0.x',
+    });
+  }
+
+  // License.identifier was introduced in 3.1
+  const info = spec.info as Obj | undefined;
+  if (info) {
+    const license = info.license as Obj | undefined;
+    if (license?.identifier !== undefined) {
+      delete license.identifier;
+      warnings.push({
+        field: 'info.license.identifier',
+        message: 'Removed license identifier because target version is 3.0.x (use url instead)',
+      });
+    }
+  }
 }
 
 // -------------------------------------------------------------------
@@ -224,6 +247,22 @@ function strip32Features(
 
   // jsonSchemaDialect: only strip when targeting 3.0 (3.1 supports it)
   // Already handled by strip31Features if targeting 3.0
+
+  // Server.name (3.2 only)
+  if (Array.isArray(spec.servers)) {
+    for (const server of spec.servers) {
+      if (server && typeof server === 'object') {
+        const s = server as Obj;
+        if (s.name !== undefined) {
+          delete s.name;
+          warnings.push({
+            field: 'servers',
+            message: `Removed server name because target version is 3.${targetMinor}.x`,
+          });
+        }
+      }
+    }
+  }
 
   // PathItem: query method, additionalOperations
   const paths = spec.paths as Obj | undefined;
