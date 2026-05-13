@@ -1,6 +1,6 @@
 {
   "name": "@ebarahona/loopback-openapi-v3",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "LoopBack 4 component for OpenAPI 3.1 and 3.2 spec generation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
