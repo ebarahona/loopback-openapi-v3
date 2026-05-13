@@ -1,6 +1,6 @@
 # @ebarahona/loopback-openapi-v3
 
-LoopBack 4 component for OpenAPI Specification (OAS) 3.0, 3.1, and 3.2 version transformation.
+OpenAPI version compatibility enhancer for LoopBack 4. Supports emitting OpenAPI Specification (OAS) 3.0.x, 3.1.x, and 3.2.x specs from LoopBack-generated OpenAPI output, with nullable conversion and lossy downgrade diagnostics.
 
 LoopBack 4 generates OpenAPI 3.0 specs by default. This component transforms the output to OpenAPI 3.1 or 3.2, enabling JSON Schema compatibility (3.1) and SSE streaming support (3.2). It also handles downgrading from higher versions to lower ones for backward compatibility.
 

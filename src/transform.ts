@@ -5,7 +5,7 @@ interface Obj {
   [key: string]: unknown;
 }
 
-const SUPPORTED_MINORS: readonly number[] = [0, 1, 2];
+const SUPPORTED_MINORS = [0, 1, 2] as const;
 
 /**
  * Diagnostic warning emitted when features are stripped during downgrade.
@@ -59,7 +59,7 @@ export function parseVersion(version: string): {major: number; minor: number; pa
       `Unsupported OpenAPI major version: ${major}. Only version 3.x is supported.`,
     );
   }
-  if (!SUPPORTED_MINORS.includes(minor)) {
+  if (!(SUPPORTED_MINORS as readonly number[]).includes(minor)) {
     throw new Error(
       `Unsupported OpenAPI minor version: 3.${minor}. Supported: 3.0.x, 3.1.x, 3.2.x`,
     );
@@ -119,7 +119,7 @@ export function transformOpenApiSpec(
 
   // 3.1+ -> 3.0: downgrade nullable and strip 3.1 features
   if (targetMinor < 1 && sourceMinor >= 1) {
-    downgradeNullable(out);
+    downgradeNullable(out, warnings, warnedKeys);
     strip31Features(out, warnings, warnedKeys);
   }
 
@@ -173,7 +173,12 @@ function upgradeNullable(spec: Obj): void {
  * Does NOT unwrap single-element composition arrays to avoid
  * metadata collision (description, title, default, etc.).
  */
-function downgradeNullable(spec: Obj): void {
+function downgradeNullable(
+  spec: Obj,
+  warnings: TransformWarning[],
+  seen: Set<string>,
+): void {
+  let converted = false;
   walkAllSchemas(spec, (s: Obj) => {
     // Type array with null
     if (Array.isArray(s.type)) {
@@ -182,6 +187,7 @@ function downgradeNullable(spec: Obj): void {
         const nonNull = types.filter(t => t !== 'null');
         s.type = nonNull.length === 1 ? nonNull[0] : nonNull;
         s.nullable = true;
+        converted = true;
       }
     }
 
@@ -196,10 +202,14 @@ function downgradeNullable(spec: Obj): void {
       if (nullIdx !== -1) {
         arr.splice(nullIdx, 1);
         s.nullable = true;
+        converted = true;
         // Do NOT unwrap single-element arrays to avoid metadata collision
       }
     }
   });
+  if (converted) {
+    warnOnce(warnings, seen, 'nullable', 'Converted type arrays to nullable: true for 3.0 compatibility (lossy)');
+  }
 }
 
 // -------------------------------------------------------------------
@@ -293,8 +303,14 @@ function strip32Features(
       const item = webhooks[name];
       if (!item || typeof item !== 'object') continue;
       const pi = item as Obj;
-      delete pi.query;
-      delete pi.additionalOperations;
+      if (pi.query !== undefined) {
+        delete pi.query;
+        warnOnce(warnings, seen, `webhooks.${name}.query`, `Removed QUERY method because target version is 3.${targetMinor}.x`);
+      }
+      if (pi.additionalOperations !== undefined) {
+        delete pi.additionalOperations;
+        warnOnce(warnings, seen, `webhooks.${name}.additionalOperations`, `Removed additionalOperations because target version is 3.${targetMinor}.x`);
+      }
     }
   }
 
