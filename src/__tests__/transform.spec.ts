@@ -750,3 +750,43 @@ describe('components.pathItems', () => {
     expect(components).toHaveProperty('pathItems');
   });
 });
+
+// -------------------------------------------------------------------
+// XML Object text field (3.2)
+// -------------------------------------------------------------------
+
+describe('XML Object', () => {
+  it('strips xml.text when downgrading from 3.2', () => {
+    const spec = {
+      openapi: '3.2.0',
+      info: {title: 'T', version: '1'},
+      paths: {},
+      components: {
+        schemas: {
+          Item: {
+            type: 'object',
+            xml: {name: 'item', text: true},
+            properties: {
+              name: {type: 'string', xml: {attribute: true}},
+              content: {type: 'string', xml: {text: true}},
+            },
+          },
+        },
+      },
+    };
+
+    const {spec: result, warnings} = transformOpenApiSpec(spec, {version: '3.1.0'});
+    const item = (result.components as Record<string, unknown>)?.schemas as Record<string, unknown>;
+    const schema = item?.Item as Record<string, unknown>;
+    const xml = schema?.xml as Record<string, unknown>;
+    expect(xml).not.toHaveProperty('text');
+    expect(xml?.name).toBe('item');
+
+    const props = schema?.properties as Record<string, unknown>;
+    const content = props?.content as Record<string, unknown>;
+    const contentXml = content?.xml as Record<string, unknown>;
+    expect(contentXml).not.toHaveProperty('text');
+
+    expect(warnings.some(w => w.field === 'xml.text')).toBe(true);
+  });
+});

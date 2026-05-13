@@ -370,6 +370,21 @@ function strip32Features(
     }
   }
 
+  // XML Object: text field (3.2 only)
+  // Walk all schemas and strip xml.text
+  walkAllSchemas(spec, (schema: Obj) => {
+    if (schema.xml && typeof schema.xml === 'object') {
+      const xml = schema.xml as Obj;
+      if (xml.text !== undefined) {
+        delete xml.text;
+        warnings.push({
+          field: 'xml.text',
+          message: `Removed XML text field because target version is 3.${targetMinor}.x`,
+        });
+      }
+    }
+  });
+
   // Per-operation: querystring param location, itemSchema, itemEncoding, prefixEncoding
   forEachOperation(spec, (op: Obj, opPath: string) => {
     // querystring -> query
