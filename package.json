@@ -25,7 +25,9 @@
     "openapi32",
     "swagger",
     "spec",
-    "component"
+    "component",
+    "loopback4 extension",
+    "extension"
   ],
   "author": "Ed Barahona (https://github.com/ebarahona)",
   "license": "MIT",
