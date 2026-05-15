@@ -20,6 +20,35 @@
 - `eslint.config.js` fixed (`require()` error)
 - `tsconfig.json` gains `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`
 
+## [1.1.0](https://github.com/ebarahona/loopback-openapi-v3/compare/loopback-openapi-v3-v1.0.0...loopback-openapi-v3-v1.1.0) (2026-05-15)
+
+
+### Features
+
+* add startup config debug logging for deployment diagnostics ([5a5156a](https://github.com/ebarahona/loopback-openapi-v3/commit/5a5156aca6689a240051c1ee422b9128a9221df6))
+* add XML Object text field stripping for 3.2 downgrade ([c5b854c](https://github.com/ebarahona/loopback-openapi-v3/commit/c5b854c694e8ed8acf89462023ef6fcf9c188f90))
+* complete 3.2 spec coverage and 3.1 feature stripping ([69b4eb6](https://github.com/ebarahona/loopback-openapi-v3/commit/69b4eb6c5e56d028a709e8da05559f428b5b2f5b))
+* enterprise scaffolding parity with @ebarahona/loopback-* portfolio ([7ba5880](https://github.com/ebarahona/loopback-openapi-v3/commit/7ba58805c3cadd891a4a6f0c0b0dfc36bf280af5))
+* enterprise-grade OpenAPI 3.0/3.1/3.2 version transformer ([31ac53b](https://github.com/ebarahona/loopback-openapi-v3/commit/31ac53bfdb25fba76077918a4a4b6f3a971421de))
+* initial release of loopback-openapi-v3 component ([e69aacb](https://github.com/ebarahona/loopback-openapi-v3/commit/e69aacb2bc0baa5168492f6c204fb01cc2ea7dc8))
+* v1-compatible core logic finalized ([f3ede00](https://github.com/ebarahona/loopback-openapi-v3/commit/f3ede00e75d69f41b0b172ab3de84217442b242e))
+
+
+### Bug Fixes
+
+* accurate JSDoc and warning count in debug output ([8a0ae22](https://github.com/ebarahona/loopback-openapi-v3/commit/8a0ae22fe60afd81f9740bf0bfeceac198f91a10))
+* address enterprise-grade review feedback ([f137fed](https://github.com/ebarahona/loopback-openapi-v3/commit/f137fed3e44cc49b23495314a87f2ffb4741065b))
+* **ci:** unblock typos and link check for v1.1.0 ([4dfeb31](https://github.com/ebarahona/loopback-openapi-v3/commit/4dfeb31b1e35e553c218bb98118d5f41fec4f381))
+* **docs:** unparseable -&gt; unparsable in README typed-errors section ([7c646e1](https://github.com/ebarahona/loopback-openapi-v3/commit/7c646e1851a02122494edbf91d3ec15d1bd423a7))
+* enterprise-grade hardening ([425e9e0](https://github.com/ebarahona/loopback-openapi-v3/commit/425e9e07d6ffe5ebef69a1448e727e148240ed2e))
+* final enterprise-grade tweaks ([337326b](https://github.com/ebarahona/loopback-openapi-v3/commit/337326ba67fe58a3e63630d9b1968e1ab4ed32dd))
+
+
+### Documentation
+
+* align naming with OAI OpenAPI Style Guide ([c826c66](https://github.com/ebarahona/loopback-openapi-v3/commit/c826c66e17de2fbf8a234ccc73caeaaa670b1ab9))
+* comprehensive README with full feature coverage table ([c243b0e](https://github.com/ebarahona/loopback-openapi-v3/commit/c243b0e07c2e39c78b38422b7decf0c70f9d1595))
+
 ## 1.0.0 (2026-05-14)
 
 ### ⚠ BREAKING CHANGES
