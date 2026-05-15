@@ -1,0 +1,268 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@ebarahona/loopback-openapi-v3 - v1.1.0</title><meta name="description" content="Documentation for @ebarahona/loopback-openapi-v3"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">@ebarahona/loopback-openapi-v3 - v1.1.0</a><div id="tsd-toolbar-links"><a href="https://github.com/ebarahona/loopback-openapi-v3">GitHub</a><a href="https://github.com/ebarahona/loopback-openapi-v3/blob/main/STYLE_GUIDE.md">Style Guide</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>@ebarahona/loopback-openapi-v3 - v1.1.0</h1></div><div class="tsd-panel tsd-typography"><h1 id="ebarahonaloopback-openapi-v3" class="tsd-anchor-link">@ebarahona/loopback-openapi-v3<a href="#ebarahonaloopback-openapi-v3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p>OpenAPI version compatibility enhancer for LoopBack 4. Transforms LoopBack-generated OpenAPI 3.0 specs into OAS 3.1 or 3.2 at boot, handles nullable conversion both ways, and emits structured warnings for lossy downgrades.</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">@ebarahona/loopback-openapi-v3</span>
+</code><button type="button">Copy</button></pre>
+
+<blockquote>
+<p>Part of the <a href="https://github.com/ebarahona/loopback-plugins"><code>@ebarahona/loopback-*</code> plugin portfolio</a>. See the <a href="https://github.com/ebarahona/loopback-plugins/blob/main/ROADMAP.md">portfolio roadmap</a> for sibling plugins (<code>loopback-connector-mongodb</code>, <code>loopback-transport-core</code>, planned <code>loopback-graphql</code>) and the shared infrastructure they use.</p>
+</blockquote>
+<p>LoopBack 4 emits OpenAPI 3.0 by default. This component registers an OAS Enhancer that runs during spec generation and rewrites the document to the target version. Upgrades convert <code>{type, nullable}</code> to <code>{type: [type, 'null']}</code> and emit 3.1+ idioms. Downgrades strip fields that have no 3.0 equivalent and emit a <code>TransformWarning</code> for each one. The enhancer is pure and deterministic, so LoopBack's spec cache reuses the result on subsequent requests.</p>
+<h2 id="what-this-provides" class="tsd-anchor-link">What This Provides<a href="#what-this-provides" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Export</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OpenApiVersionComponent</code></td>
+<td>LoopBack 4 component that registers the enhancer</td>
+</tr>
+<tr>
+<td><code>OpenApiVersionEnhancer</code></td>
+<td>OAS Enhancer wired into <code>@loopback/openapi-v3</code> spec generation</td>
+</tr>
+<tr>
+<td><code>OpenApiVersionBindings</code></td>
+<td>Typed <code>BindingKey</code> namespace (<code>CONFIG</code>)</td>
+</tr>
+<tr>
+<td><code>OpenApiVersion</code></td>
+<td>Version literal type (<code>'3.0.0' | '3.1.0' | '3.2.0'</code>)</td>
+</tr>
+<tr>
+<td><code>OpenApiVersionConfig</code></td>
+<td>Component config type (target version, nullable transform flag)</td>
+</tr>
+<tr>
+<td><code>transformOpenApiSpec(spec, config?)</code></td>
+<td>Pure transform function, usable outside LoopBack</td>
+</tr>
+<tr>
+<td><code>parseVersion(version)</code></td>
+<td>Parses <code>'3.1.0'</code> into <code>{major, minor, patch}</code></td>
+</tr>
+<tr>
+<td><code>TransformResult</code></td>
+<td><code>{spec, warnings}</code> returned by <code>transformOpenApiSpec</code></td>
+</tr>
+<tr>
+<td><code>TransformWarning</code></td>
+<td>Structured warning describing a stripped or rewritten field</td>
+</tr>
+<tr>
+<td><code>OpenApiVersionError</code></td>
+<td>Base class for every error thrown by this package</td>
+</tr>
+<tr>
+<td><code>OpenApiVersionConfigError</code></td>
+<td>Thrown when component config is invalid</td>
+</tr>
+<tr>
+<td><code>OpenApiTransformError</code></td>
+<td>Thrown when the input spec cannot be transformed</td>
+</tr>
+<tr>
+<td><code>OpenApiDowngradeError</code></td>
+<td>Thrown when a downgrade target cannot represent required source fields</td>
+</tr>
+</tbody>
+</table>
+<h2 id="install" class="tsd-anchor-link">Install<a href="#install" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">@ebarahona/loopback-openapi-v3</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="usage" class="tsd-anchor-link">Usage<a href="#usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="component-path-recommended" class="tsd-anchor-link">Component path (recommended)<a href="#component-path-recommended" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> {</span><span class="hl-4">RestApplication</span><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@loopback/rest&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">OpenApiVersionComponent</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">OpenApiVersionBindings</span><span class="hl-1">,</span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@ebarahona/loopback-openapi-v3&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">app</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">RestApplication</span><span class="hl-1">();</span><br/><span class="hl-4">app</span><span class="hl-1">.</span><span class="hl-0">component</span><span class="hl-1">(</span><span class="hl-4">OpenApiVersionComponent</span><span class="hl-1">);</span><br/><span class="hl-4">app</span><span class="hl-1">.</span><span class="hl-0">bind</span><span class="hl-1">(</span><span class="hl-4">OpenApiVersionBindings</span><span class="hl-1">.</span><span class="hl-6">CONFIG</span><span class="hl-1">).</span><span class="hl-0">to</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">version:</span><span class="hl-1"> </span><span class="hl-2">&#39;3.1.0&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">transformNullable:</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The spec served at <code>/openapi.json</code> is rewritten to <code>&quot;openapi&quot;: &quot;3.1.0&quot;</code>, with nullable fields converted to type arrays. LoopBack caches the transformed spec; the enhancer does not re-run per request.</p>
+<h3 id="pure-function-path-standalone" class="tsd-anchor-link">Pure-function path (standalone)<a href="#pure-function-path-standalone" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p><code>transformOpenApiSpec</code> is exported for use outside a LoopBack application (build-time tooling, tests, fixture generation):</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> {</span><span class="hl-4">transformOpenApiSpec</span><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@ebarahona/loopback-openapi-v3&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> {</span><span class="hl-6">spec</span><span class="hl-1">, </span><span class="hl-6">warnings</span><span class="hl-1">} = </span><span class="hl-0">transformOpenApiSpec</span><span class="hl-1">(</span><span class="hl-4">inputSpec</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">version:</span><span class="hl-1"> </span><span class="hl-2">&#39;3.1.0&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">w</span><span class="hl-1"> </span><span class="hl-5">of</span><span class="hl-1"> </span><span class="hl-4">warnings</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-5">${</span><span class="hl-4">w</span><span class="hl-7">.</span><span class="hl-4">field</span><span class="hl-5">}</span><span class="hl-2">] </span><span class="hl-5">${</span><span class="hl-4">w</span><span class="hl-7">.</span><span class="hl-4">message</span><span class="hl-5">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The input spec is deep-cloned with <code>structuredClone</code>; the original is never mutated.</p>
+<h2 id="configuration" class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>OpenApiVersionBindings.CONFIG</code> accepts an <code>OpenApiVersionConfig</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>version</code></td>
+<td><code>'3.0.0' | '3.1.0' | '3.2.0'</code></td>
+<td><code>'3.0.0'</code></td>
+<td>Target OAS version. <code>'3.0.0'</code> is a no-op pass-through.</td>
+</tr>
+<tr>
+<td><code>transformNullable</code></td>
+<td><code>boolean</code></td>
+<td><code>true</code></td>
+<td>Rewrite <code>{type, nullable: true}</code> to <code>{type: [type, 'null']}</code> on upgrade, and the reverse on downgrade.</td>
+</tr>
+</tbody>
+</table>
+<p>Invalid configurations (unrecognized version, non-boolean flag) throw <code>OpenApiVersionConfigError</code> synchronously when the component binds.</p>
+<h2 id="supported-versions" class="tsd-anchor-link">Supported versions<a href="#supported-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Status</th>
+<th>Spec</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.0.0</td>
+<td>Default no-op</td>
+<td><a href="https://spec.openapis.org/oas/v3.0.3.html">spec.openapis.org/oas/v3.0.3</a></td>
+</tr>
+<tr>
+<td>3.1.0</td>
+<td>Supported</td>
+<td><a href="https://spec.openapis.org/oas/v3.1.0.html">spec.openapis.org/oas/v3.1.0</a></td>
+</tr>
+<tr>
+<td>3.2.0</td>
+<td>Supported</td>
+<td><a href="https://spec.openapis.org/oas/v3.2.0.html">spec.openapis.org/oas/v3.2.0</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="upgrades-30-31--32" class="tsd-anchor-link">Upgrades (3.0 -&gt; 3.1 / 3.2)<a href="#upgrades-30-31--32" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li><code>nullable: true</code> rewritten to type arrays (<code>{type: ['string', 'null']}</code>).</li>
+<li>Handles nullable combined with <code>oneOf</code>, <code>anyOf</code>, <code>allOf</code>, and schemas without an explicit <code>type</code>.</li>
+</ul>
+<h3 id="downgrades-32-30--31" class="tsd-anchor-link">Downgrades (3.2 -&gt; 3.0 / 3.1)<a href="#downgrades-32-30--31" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Downgrades are lossy. Features that have no equivalent in lower versions are stripped, and a <code>TransformWarning</code> is emitted for each one.</p>
+<p><strong>3.1 features stripped when targeting 3.0:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JSON Schema dialect</td>
+<td><code>jsonSchemaDialect</code></td>
+</tr>
+<tr>
+<td>Webhooks</td>
+<td><code>webhooks</code></td>
+</tr>
+<tr>
+<td>Reusable path items</td>
+<td><code>components.pathItems</code></td>
+</tr>
+<tr>
+<td>SPDX license identifier</td>
+<td><code>info.license.identifier</code></td>
+</tr>
+<tr>
+<td>Type arrays</td>
+<td><code>type: ['string', 'null']</code> -&gt; <code>nullable: true</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>3.2 features stripped when targeting 3.0 or 3.1:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Document identity</td>
+<td><code>$self</code></td>
+</tr>
+<tr>
+<td>Server name</td>
+<td><code>servers[].name</code></td>
+</tr>
+<tr>
+<td>QUERY HTTP method</td>
+<td><code>paths.*.query</code></td>
+</tr>
+<tr>
+<td>Additional HTTP methods</td>
+<td><code>paths.*.additionalOperations</code></td>
+</tr>
+<tr>
+<td>Tag nesting</td>
+<td><code>tags[].summary</code>, <code>.parent</code>, <code>.kind</code></td>
+</tr>
+<tr>
+<td>Querystring parameter</td>
+<td><code>parameters[].in: 'querystring'</code> -&gt; <code>'query'</code></td>
+</tr>
+<tr>
+<td>OAuth2 device flow</td>
+<td><code>securitySchemes.*.flows.device</code></td>
+</tr>
+<tr>
+<td>SSE streaming schema</td>
+<td><code>content.*.itemSchema</code></td>
+</tr>
+<tr>
+<td>SSE streaming encoding</td>
+<td><code>content.*.itemEncoding</code>, <code>.prefixEncoding</code></td>
+</tr>
+<tr>
+<td>Example formats</td>
+<td><code>examples.*.dataValue</code>, <code>.serializedValue</code></td>
+</tr>
+<tr>
+<td>Reusable media types</td>
+<td><code>components.mediaTypes</code></td>
+</tr>
+<tr>
+<td>XML text nodes</td>
+<td><code>xml.text</code></td>
+</tr>
+</tbody>
+</table>
+<p>When a required source field cannot be expressed in the target version (for example a 3.2 spec that depends on <code>$self</code> referenced elsewhere in the document), the transform raises <code>OpenApiDowngradeError</code> instead of silently dropping the reference.</p>
+<h2 id="typed-errors" class="tsd-anchor-link">Typed errors<a href="#typed-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>This package throws four typed error classes, all derived from <code>OpenApiVersionError</code>. Catch the base class for a category check, or the specific subclass for fine-grained handling.</p>
+<ul>
+<li><code>OpenApiVersionError</code>: abstract base. Every error thrown by this package extends it.</li>
+<li><code>OpenApiVersionConfigError</code>: invalid component configuration. Thrown synchronously when the component binds or when <code>transformOpenApiSpec</code> is called with an unsupported target version.</li>
+<li><code>OpenApiTransformError</code>: input spec is structurally invalid (missing <code>openapi</code> field, unparsable version string, cyclic schema references).</li>
+<li><code>OpenApiDowngradeError</code>: a downgrade target cannot represent a load-bearing source field. The error includes the offending field path and the source/target version pair.</li>
+</ul>
+<h2 id="stability" class="tsd-anchor-link">Stability<a href="#stability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Every export listed in <a href="#what-this-provides">What This Provides</a> is tagged <code>@public</code> from v1.0 onward. The public-API surface is audited by the <code>/lb4-public-api-audit</code> skill before every release; experimental additions are tagged <code>@experimental</code> until at least one real consumer has exercised the surface.</p>
+<h2 id="requirements" class="tsd-anchor-link">Requirements<a href="#requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li>Node.js &gt;= 20.19.0 (for <code>structuredClone</code> and the package's engines field)</li>
+<li>LoopBack 4 application</li>
+</ul>
+<p>Peer dependencies: <code>@loopback/core</code> (&gt;=7.0.0 &lt;8.0.0), <code>@loopback/openapi-v3</code> (&gt;=11.0.0 &lt;12.0.0), <code>@loopback/rest</code> (&gt;=15.0.0 &lt;16.0.0).</p>
+<h2 id="spec-references" class="tsd-anchor-link">Spec references<a href="#spec-references" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li><a href="https://spec.openapis.org/oas/v3.0.3.html">OpenAPI 3.0.3</a></li>
+<li><a href="https://spec.openapis.org/oas/v3.1.0.html">OpenAPI 3.1.0</a></li>
+<li><a href="https://spec.openapis.org/oas/v3.2.0.html">OpenAPI 3.2.0</a></li>
+<li><a href="https://github.com/OAI/OpenAPI-Specification">OpenAPI Specification Repository</a></li>
+</ul>
+<h2 id="contributing" class="tsd-anchor-link">Contributing<a href="#contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>See <a href="media/CONTRIBUTING.md">CONTRIBUTING.md</a>. Help-wanted topics with measurable acceptance criteria are listed in <a href="media/HELP_WANTED.md">HELP_WANTED.md</a>.</p>
+<h2 id="license" class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>MIT</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ebarahonaloopback-openapi-v3"><span>@ebarahona/loopback-<wbr/>openapi-<wbr/>v3</span></a><ul><li><a href="#what-this-provides"><span>What <wbr/>This <wbr/>Provides</span></a></li><li><a href="#install"><span>Install</span></a></li><li><a href="#usage"><span>Usage</span></a></li><li><ul><li><a href="#component-path-recommended"><span>Component path (recommended)</span></a></li><li><a href="#pure-function-path-standalone"><span>Pure-<wbr/>function path (standalone)</span></a></li></ul></li><li><a href="#configuration"><span>Configuration</span></a></li><li><a href="#supported-versions"><span>Supported versions</span></a></li><li><ul><li><a href="#upgrades-30-31--32"><span>Upgrades (3.0 -<wbr/>&gt; 3.1 / 3.2)</span></a></li><li><a href="#downgrades-32-30--31"><span>Downgrades (3.2 -<wbr/>&gt; 3.0 / 3.1)</span></a></li></ul></li><li><a href="#typed-errors"><span>Typed errors</span></a></li><li><a href="#stability"><span>Stability</span></a></li><li><a href="#requirements"><span>Requirements</span></a></li><li><a href="#spec-references"><span>Spec references</span></a></li><li><a href="#contributing"><span>Contributing</span></a></li><li><a href="#license"><span>License</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://github.com/ebarahona/loopback-openapi-v3" class="tsd-nav-link">GitHub</a><a href="https://github.com/ebarahona/loopback-openapi-v3/blob/main/STYLE_GUIDE.md" class="tsd-nav-link">Style Guide</a></nav><nav class="tsd-navigation"><a href="modules.html">@ebarahona/loopback-openapi-v3 - v1.1.0</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
