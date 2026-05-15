@@ -1,5 +1,15 @@
+/**
+ * Supported OpenAPI Specification target versions.
+ *
+ * @public
+ */
 export type OpenApiVersion = '3.0.0' | '3.1.0' | '3.2.0';
 
+/**
+ * Configuration for the OpenAPI version transformer.
+ *
+ * @public
+ */
 export interface OpenApiVersionConfig {
   /**
    * Target OpenAPI Specification version.
@@ -14,6 +24,12 @@ export interface OpenApiVersionConfig {
   transformNullable?: boolean;
 }
 
+/**
+ * Default configuration applied when no `OpenApiVersionConfig` binding
+ * is provided. Targets 3.0.0 with nullable transformation enabled.
+ *
+ * @internal
+ */
 export const DEFAULT_CONFIG: OpenApiVersionConfig = {
   version: '3.0.0',
   transformNullable: true,

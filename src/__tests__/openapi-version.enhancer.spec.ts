@@ -1,6 +1,6 @@
 import {describe, it, expect} from 'vitest';
 import {OpenApiVersionEnhancer} from '../openapi-version.enhancer';
-import {OpenApiSpec} from '@loopback/openapi-v3';
+import type {OpenApiSpec} from '@loopback/openapi-v3';
 
 function createTestSpec(): OpenApiSpec {
   return {

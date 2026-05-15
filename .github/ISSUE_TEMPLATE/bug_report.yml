@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a defect in @ebarahona/loopback-openapi-v3.
+title: 'bug: '
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Short description
+      description: One or two sentences describing the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps to reproduce the bug.
+      placeholder: |
+        Provide a minimal reproduction:
+        - OpenAPI spec snippet (redact credentials)
+        - DataSource or client configuration
+        - The failing call and any inputs
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        - @ebarahona/loopback-openapi-v3 version:
+        - OpenAPI spec version (e.g. 3.0.3, 3.1.0):
+        - Node version:
+        - OS:
+    validations:
+      required: true
+  - type: textarea
+    id: stack-trace
+    attributes:
+      label: Stack trace
+      description: Full stack trace, if available.
+      render: text
+    validations:
+      required: false

@@ -1,8 +1,5 @@
 import {config, injectable} from '@loopback/core';
-import {
-  OASEnhancer,
-  OpenApiSpec,
-} from '@loopback/openapi-v3';
+import {OASEnhancer, OpenApiSpec} from '@loopback/openapi-v3';
 import debugFactory from 'debug';
 import {OpenApiVersionBindings} from './keys';
 import {transformOpenApiSpec} from './transform';
@@ -27,6 +24,8 @@ const debug = debugFactory('loopback:openapi-version');
  * - 3.0: https://spec.openapis.org/oas/v3.0.3.html
  * - 3.1: https://spec.openapis.org/oas/v3.1.0.html
  * - 3.2: https://spec.openapis.org/oas/v3.2.0.html
+ *
+ * @public
  */
 @injectable()
 export class OpenApiVersionEnhancer implements OASEnhancer {
@@ -44,13 +43,13 @@ export class OpenApiVersionEnhancer implements OASEnhancer {
       opts.version,
       opts.transformNullable !== false,
     );
-    const result = transformOpenApiSpec(
-      spec as Record<string, unknown>,
-      opts,
-    );
+    const result = transformOpenApiSpec(spec as Record<string, unknown>, opts);
 
     if (result.warnings.length > 0) {
-      debug('emitted %d OpenAPI compatibility warnings', result.warnings.length);
+      debug(
+        'emitted %d OpenAPI compatibility warnings',
+        result.warnings.length,
+      );
       for (const w of result.warnings) {
         debug('warning [%s]: %s', w.field, w.message);
       }

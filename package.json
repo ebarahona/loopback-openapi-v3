@@ -4,8 +4,14 @@
   "description": "LoopBack 4 component for OpenAPI 3.1 and 3.2 spec generation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -46,13 +52,18 @@
     "@loopback/rest": ">=15.0.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@loopback/core": "^7.0.12",
     "@loopback/openapi-v3": "^11.0.13",
     "@loopback/rest": "^15.0.13",
     "@loopback/testlab": "^8.0.12",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
     "eslint": "^8.57.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-tsdoc": "^0.5.2",
     "prettier": "^3.2.0",
     "rimraf": "^5.0.0",
     "typescript": "~5.2.2",
