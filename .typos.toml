@@ -20,10 +20,12 @@ extend-ignore-re = [
 ]
 
 [default.extend-words]
-# MongoDB / driver names
-mongodb = "mongodb"
-loopback = "loopback"
-# MongoDB query operators
-nin = "nin"
+# Substrings inside auto-generated CHANGELOG commit-SHA URLs that
+# typos word-tokenizes before the hex regex can mask the full SHA.
+ba = "ba"
+ede = "ede"
+# Locked in by release-please CHANGELOG history (older commit subject
+# referenced this misspelling; we cannot rewrite the history line).
+unparseable = "unparseable"
 # Project-local terms
-juggler = "juggler"
+loopback = "loopback"
