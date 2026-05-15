@@ -55,7 +55,7 @@ export class OpenApiVersionConfigError extends OpenApiVersionError {
 
 /**
  * Thrown when an OpenAPI document fails to transform between versions
- * (malformed input, unparseable structure, ambiguous nullable usage).
+ * (malformed input, unparsable structure, ambiguous nullable usage).
  *
  * @public
  */

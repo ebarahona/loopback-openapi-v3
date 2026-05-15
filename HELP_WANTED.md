@@ -18,7 +18,7 @@ Current state:
 
 Needed:
 
-- Vendor the published [OpenAPI 3.1](https://spec.openapis.org/oas/3.1/schema/latest)
+- Vendor the published [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0.html)
   and 3.2 JSON Schemas into `src/__tests__/conformance/schema/`
 - Validate every transform output against the target version's schema
   with `ajv` (already a dev dep candidate)

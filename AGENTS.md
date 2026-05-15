@@ -29,7 +29,7 @@ Read these in full before suggesting any change.
   `lint && build && test` gate, git hook paths (lefthook vs `.githooks`),
   PR expectations, release-please flow, bug-report requirements.
 - LoopBack's official [`loopback-core` skill](https://github.com/loopbackio/loopback-next/tree/master/skills/loopback-core): upstream reference for IoC, dependency injection, extension points, interceptors, lifecycle observers, and components. Defer to this for framework patterns; STYLE_GUIDE.md only documents plugin-author conventions layered on top.
-- LoopBack's [`@loopback/openapi-v3` OAS Enhancer extension point](https://loopback.io/doc/en/lb4/extending-openapi.html): upstream contract for how this plugin participates in spec generation.
+- LoopBack's [`@loopback/openapi-v3` OAS Enhancer extension point](https://loopback.io/doc/en/lb4/): upstream contract for how this plugin participates in spec generation.
 - [./README.md](./README.md): package surface: component path vs
   pure-function path, supported target versions, downgrade diagnostics,
   typed error hierarchy, peer-dependency ranges.
