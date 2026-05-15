@@ -136,7 +136,7 @@ This package throws four typed error classes, all derived from `OpenApiVersionEr
 
 - `OpenApiVersionError`: abstract base. Every error thrown by this package extends it.
 - `OpenApiVersionConfigError`: invalid component configuration. Thrown synchronously when the component binds or when `transformOpenApiSpec` is called with an unsupported target version.
-- `OpenApiTransformError`: input spec is structurally invalid (missing `openapi` field, unparseable version string, cyclic schema references).
+- `OpenApiTransformError`: input spec is structurally invalid (missing `openapi` field, unparsable version string, cyclic schema references).
 - `OpenApiDowngradeError`: a downgrade target cannot represent a load-bearing source field. The error includes the offending field path and the source/target version pair.
 
 ## Stability
