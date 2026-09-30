@@ -1,0 +1,37 @@
+source:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/*.ts'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/__tests__/**/*'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'README.md'
+          - '*.md'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**/*'
+
+tooling:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'scripts/**/*'
+          - 'lefthook.yml'
+          - 'eslint.config.js'
+          - 'commitlint.config.js'
+          - 'tsconfig*.json'
+          - 'vitest.config.ts'
+          - '.size-limit.cjs'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'package-lock.json'
