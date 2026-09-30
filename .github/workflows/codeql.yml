@@ -32,7 +32,7 @@ jobs:
 
       - name: Build for analysis
         run: |
-          rm -f package-lock.json && npm install --include=optional --no-audit --no-fund
+          npm ci --include=optional --no-audit --no-fund
           npm run build
 
       - name: Perform CodeQL Analysis
