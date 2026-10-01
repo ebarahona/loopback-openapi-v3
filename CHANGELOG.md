@@ -20,6 +20,14 @@
 - `eslint.config.js` fixed (`require()` error)
 - `tsconfig.json` gains `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`
 
+## [1.1.1](https://github.com/ebarahona/loopback-openapi-v3/compare/loopback-openapi-v3-v1.1.0...loopback-openapi-v3-v1.1.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **hooks:** drop the lefthook dependency so its postinstall can't write to a global hooksPath ([#4](https://github.com/ebarahona/loopback-openapi-v3/issues/4)) ([1d714fd](https://github.com/ebarahona/loopback-openapi-v3/commit/1d714fd42cecadd8b5685787a81c1f313e70361e))
+* **hooks:** never install into a hooksPath outside the repo ([#2](https://github.com/ebarahona/loopback-openapi-v3/issues/2)) ([2963998](https://github.com/ebarahona/loopback-openapi-v3/commit/2963998f9a273a7b6a60bce301c63819e7158761))
+
 ## [1.1.0](https://github.com/ebarahona/loopback-openapi-v3/compare/loopback-openapi-v3-v1.0.0...loopback-openapi-v3-v1.1.0) (2026-05-15)
 
 
